@@ -10,41 +10,44 @@ class Cluster:
     def single_cluster(self, user_id, eps, min_stamples):
         staypoints = self.__load_staypoints(user_id)
         db = DBSCAN(eps=eps, min_samples=min_stamples).fit(staypoints)
+        clusters, ignore_nodes = self.__parse_dbscan_result(db, staypoints)
+        return clusters, ignore_nodes
 
-
+    def __parse_dbscan_result(self, db, staypoints):
         labels = db.labels_
-
-        num_cluster = len(set(labels)) - (1 if -1 in labels else 0)
-
-        print num_cluster
-
         unique_labels = set(labels)
 
-        print unique_labels
+        clusters = []
+        ignore_nodes = []
+
+        for k in unique_labels:
+            class_member_mask = (labels == k)
+            xy = staypoints[class_member_mask]
+            if k == -1:
+                ignore_nodes = xy
+            else:
+                clusters.append(xy)
+
+        return clusters, ignore_nodes
 
 
-        colors = plt.cm.Spectral(np.linspace(0, 1, len(unique_labels)))
+    def plot(self, clusters, ignore_nodes):
+        colors = plt.cm.Spectral(np.linspace(0, 1, len(clusters)))
 
         fig = plt.figure(2)
-        centerPoint = []
+        plt.title('DBSCAN :Estimated number of clusters: %d' % len(clusters))
 
-        core_samples_mask = np.zeros_like(db.labels_, dtype=bool)
-        core_samples_mask[db.core_sample_indices_] = True
+        for i in range(len(clusters)):
+            plt.plot(clusters[i][:, 0], clusters[i][:, 1], 'o',
+                     markerfacecolor=colors[i],
+                     markeredgecolor='k', markersize=10)
 
-        for k, col in zip(unique_labels, colors):
-            if k == -1:
-                col = 'k'
-
-            class_member_mask = (labels == k)
-
-            xy = staypoints[class_member_mask & core_samples_mask]
-
-            plt.plot(xy[:, 0], xy[:, 1], 'o', markerfacecolor=col,
-                     markeredgecolor='k', markersize=14)
-
-        plt.title('DBSCAN :Estimated number of clusters: %d' % num_cluster)
+        if len(ignore_nodes):
+            plt.plot(ignore_nodes[:, 0], ignore_nodes[:, 1], 'o',
+                     markeredgecolor='k', markersize=3)
 
         plt.show()
+
 
     def __load_staypoints(self, user_id):
         staypoints = []
@@ -60,5 +63,5 @@ class Cluster:
 if __name__ == '__main__':
 
     c = Cluster()
-    c.single_cluster(1, 0.01, 10)
-
+    cluster, ignore_nodes = c.single_cluster(1, 0.01, 10)
+    c.plot(clusters=cluster, ignore_nodes=ignore_nodes)
