@@ -1,15 +1,18 @@
+# -*- coding: utf-8 -*-
+
 import sys
 sys.path.append("..")
 from sql_base import dbutils
 from base import base_op
-from base import file_op
-from base import stay_point
+from base.stay_point import StayPoint
 import logging.config
 import csv
 import pickle
-import os
 import json
 from convert_coordinate import convert_coordinate
+import os
+from math import radians, cos, sin, asin, sqrt
+import time
 
 logger = None
 
@@ -43,136 +46,69 @@ def calc_mean_pos(s_point,tmp_points):
     s_point.leaving_point = tmp_points[i-1].id
     return s_point
 
-def get_stay_points(userid = 1,max_distence = 0.2, max_speed = 2):
-    print "Welcome"
-     #units :km
-    #userid = 0
-    gps_obj_list = dbutils.get_gps_record_time_order(userid, 0,-1)
+def get_stay_points(user_id, max_distence=200, max_time=30*60):
+    gps_obj_list = dbutils.get_gps_record_time_order(user_id, 0, -1)
     stay_point_list = []
-    counts = len(gps_obj_list)
-    tmp_point_list = []
-    i =0
-    while i < counts :
-        print i,counts
+    gps_size = len(gps_obj_list)
+    i = 0
+    while i < gps_size:
         j = i + 1
-        point_i =gps_obj_list[i]
-        k = 0
-        
-        #del tmp_point_list[:]
-        tmp_point_list = []
-        tmp_point_list.insert(0, point_i)
-        while (j < counts) :
+        point_i = gps_obj_list[i]
+        while (j < gps_size) :
             point_j = gps_obj_list[j]
-            euclidean_distence = base_op.get_distance(point_i, point_j)
-            #print "distence = %f km" % euclidean_distence
-            k = k + 1
-            tmp_point_list.insert(k, point_j)
-            if euclidean_distence > max_distence :
-                t_diff = point_j.gps_UTC_unix_timestamp - point_i.gps_UTC_unix_timestamp
-                meanSpeed =  euclidean_distence / t_diff  * 1000      
-                #print "speed = %f m/s" % meanSpeed
-                #if t_diff > max_timethreshold:
-                if meanSpeed < max_speed:
-                    print "distence = %f km" % euclidean_distence
-                    print "speed = %f m/s" % meanSpeed
-                    print "time = %f s" % t_diff
-                    
-                    tmp_point_list.pop();
-                    s = stay_point.stay_point()
-                    s.userid = userid
-                    calc_mean_pos(s, tmp_point_list)
-                    stay_point_list.append(s)
-                    #dbutils.insert_staypoint(s)
+            dist = get_distance(point_i.gps_longitude, point_i.gps_latitude,
+                                point_j.gps_longitude, point_j.gps_latitude)
+            if dist > max_distence:
+                delta_time = point_j.gps_UTC_unix_timestamp - point_i.gps_UTC_unix_timestamp
+                if delta_time > max_time:
+                    stay_point = StayPoint()
+                    stay_point.user_id = user_id
+                    lo, la = compute_mean_coord(gps_obj_list[i:j+1])
+                    stay_point.mean_coordinate_latitude = la
+                    stay_point.mean_coordinate_longtitude = lo
+                    stay_point.arrival_timestamp = point_i.gps_UTC_unix_timestamp
+                    stay_point.leaving_timestamp = point_j.gps_UTC_unix_timestamp
+                    stay_point_list.append(stay_point)
+
+                    time_format = '%Y-%m-%d,%H:%M:%S'
+                    print  stay_point.mean_coordinate_latitude, stay_point.mean_coordinate_longtitude,\
+                        time.strftime(time_format, time.localtime(
+                            stay_point.arrival_timestamp)), \
+                        time.strftime(time_format, time.localtime(stay_point.leaving_timestamp))
+
                     i = j
                     break
-                else:
-                    i = j
-                    break;
-            j = j+1
-        if j == counts :
-            s = stay_point.stay_point()
-            s.userid = userid
-            calc_mean_pos(s, tmp_point_list)
-            stay_point_list.append(s)
-            dbutils.insert_staypoint(s)
-            i = j
-    #    break;
-    #for gps_record in gps_obj_list :
-     #   gps_record.show()
-    #print "\n"
-    return stay_point_list
-    
-    
-def get_stay_points_v2(userid = 1,max_distence = 0.2, max_speed = 2, max_time=15*60):
-    print "Welcome"
-     #units :km
-    #userid = 0
-    gps_obj_list = dbutils.get_gps_record_time_order(userid, 0,-1)
-    stay_point_list = []
-    counts = len(gps_obj_list)
-    print counts
-    tmp_point_list = []
-    i =0
-    while i < counts :
-        print i,counts
-        j = i + 1
-        point_i =gps_obj_list[i]
-        k = 0
-        
-        #del tmp_point_list[:]
-        tmp_point_list = []
-        tmp_point_list.insert(0, point_i)
-        while (j < counts) :
-            point_j = gps_obj_list[j]
-            euclidean_distence = base_op.get_distance(point_i, point_j)
-            t_diff = point_j.gps_UTC_unix_timestamp - point_i.gps_UTC_unix_timestamp
-            #print "distence = %f km" % euclidean_distence
-            k = k + 1
-            tmp_point_list.insert(k, point_j)
-            if t_diff > max_time :
-                #t_diff = point_j.gps_UTC_unix_timestamp - point_i.gps_UTC_unix_timestamp
-                meanSpeed =  euclidean_distence / t_diff  * 1000      
-                #print "speed = %f m/s" % meanSpeed
-                #if t_diff > max_timethreshold:
-                if meanSpeed < max_speed:
-                    #print "distence = %f km" % euclidean_distence
-                    #print "speed = %f m/s" % meanSpeed
-                    #print "time = %f s" % t_diff
-                    
-                    tmp_point_list.pop();
-                    s = stay_point.stay_point()
-                    s.userid = userid
-                    calc_mean_pos(s, tmp_point_list)
-                    stay_point_list.append(s)
-                    #dbutils.insert_staypoint(s)
-                    i = j
-                    break
-                else:
-                    i = j
-                    break;
-            j = j+1
-        if j == counts :
-            s = stay_point.stay_point()
-            s.userid = userid
-            calc_mean_pos(s, tmp_point_list)
-            stay_point_list.append(s)
-            #dbutils.insert_staypoint(s)
-            i = j
-    #    break;
-    #for gps_record in gps_obj_list :
-     #   gps_record.show()
-    #print "\n"
+            j += 1
+        i += 1
     return stay_point_list
 
-def getStayPointsList(stayPointListFile,userid):
-    if os.path.isfile(stayPointListFile) :#如果不存在就返回False 
+def get_distance(lon1, lat1, lon2, lat2):
+    lon1, lat1, lon2, lat2 = map(radians, [lon1, lat1, lon2, lat2])
+    dlon = lon2 - lon1
+    dlat = lat2 - lat1
+    a = sin(dlat / 2) ** 2 + cos(lat1) * cos(lat2) * sin(dlon / 2) ** 2
+    c = 2 * asin(sqrt(a))
+    m = 6371000 * c
+    return m
+
+def compute_mean_coord(gps_points):
+    lon = 0.0
+    lat = 0.0
+    for point in gps_points:
+        lon += point.gps_latitude
+        lat += point.gps_longitude
+    return (lon/len(gps_points), lat/len(gps_points))
+
+
+def get_stay_points_list(user_id, mode=0, buffer_file_name="buffer"):
+    if mode == 1:
         print "read from local file "
-        mydb  = open(stayPointListFile, 'r')  
+        mydb = open(buffer_file_name, 'r')
         stay_points_list = pickle.load(mydb)
     else:
         print "read from mysql"
-        stay_points_list = get_stay_points(userid)
-        mydb = open(stayPointListFile, 'w')
+        stay_points_list = get_stay_points(user_id)
+        mydb = open(buffer_file_name, 'w')
         pickle.dump(stay_points_list, mydb) 
     return stay_points_list
 
@@ -204,6 +140,7 @@ def saveStayPointsToJson(distPointList, filepath='', fileId = 0 ):
     with open(filepath, "w") as fp:
         fp.write(strTmp)
     fp.close()
+
 def saveStayPointsBaiduCoordToJson(stay_points_list,dirName,userid):
     stay_points_list_baidu = []
     stay_points_list_baidu = convert_staypoint_baidu_corrd(stay_points_list)
@@ -218,78 +155,31 @@ def saveStayPointsToCsv(csv_name, stay_points_list):
              writer.writerow([p.mean_coordinate_latitude]+[p.mean_coordinate_longtitude]);
         print len(stay_points_list)
     csvfp.close()
-def printStayPoints(stay_points_list,n):
-    for i in range(n):
-        stay_points_list[i].printSelf()
-        
-def sampleImportantSpot(sTime, eTime, minDis, importantSpot,stay_points_list):
-    sampleRes = []   
-    disThreh = 200 #unit is mile
-    n = len(stay_points_list)
-    i = 0
-    imLat = importantSpot.mean_coordinate_latitude
-    imLon = importantSpot.mean_coordinate_longtitude
-    
-    while (i < n):
-        entTime = stay_points_list[i].arrival_timestamp
-        leaTime =stay_points_list[i].leaving_timestamp
-        lat = stay_points_list[i].mean_coordinate_latitude
-        lon = stay_points_list[i].mean_coordinate_longtitude
-        #unit is mile
-        dis = base_op.calc_distance(imLat,imLon,lat,lon)
-        if (dis < disThreh):
-            j = 0
-            while(sTime < entTime):
-                sTime += 60*10
-                j = j + 1;
-                if (j== 6) :
-                    sampleRes.append(0)
-                    j = 0
-            while(sTime < leaTime):
-                sTime += 60*10*6
-                sampleRes.append(1)
-        i += 1
-    while (sTime < eTime) :
-        sTime += 60*10*6
-        sampleRes.append(0)
-    print len(sampleRes)
-    return sampleRes
-    #print sampleRes
-                
-            
-            
-            
-            
-    
+
 def main():
-    userid = 1
-    dirName = "stay_points_dir" 
+    userid = 11
+    dirName = "stay_points_dir"
     stayPointNumFile = dirName+"/%d_staypoints_num.txt" %userid
     stayPointListFile = dirName+"/%d_staypoints_list.txt" %userid
     csv_name = dirName+ "/staypoints_%s.csv" %userid
-   
-    
+
     if not os.path.exists(dirName):
         os.mkdir(dirName)  
-    stay_points_list = getStayPointsList(stayPointListFile, userid)
-    sTime = 1176483388
-    eTime = 1299715222
-    minDis = 200
+    stay_points_list = get_stay_points_list(stayPointListFile, userid)
+    print len(stay_points_list)
 
-    importantSpot = stay_points_list[0]
     saveStayPointsToCsv(csv_name,stay_points_list)
 
-    sampleList = sampleImportantSpot(sTime, eTime, minDis, importantSpot,stay_points_list)
-    stayPointSampleListFile = dirName+"/%d_staypoints_sample_list_0.txt" %userid    
-    mydb = open(stayPointSampleListFile, 'w')  
-    pickle.dump(sampleList, mydb)     
     mydb = open(stayPointNumFile, 'w')
     pickle.dump(len(stay_points_list), mydb)
     saveStayPointsBaiduCoordToJson(stay_points_list, dirName, userid)
-    printStayPoints(stay_points_list, 2)
     print "successfully!"
-        
-#log_init()
-main()
 
+def get_stay_point(user_id):
+    dir_name = "../data/stay_point"
+    csv_name = dir_name+ "/staypoints_%s.csv" %user_id
+    stay_points_list = get_stay_points_list(user_id)
+    saveStayPointsToCsv(csv_name, stay_points_list)
+
+get_stay_point(1)
 
