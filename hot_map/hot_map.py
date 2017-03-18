@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 import os
+import json
+
 
 class GpsInfo:
     def __init__(self, lng, lat):
@@ -10,7 +12,6 @@ class HotMap:
     def __init__(self):
         self.raw_data_dir = '../data/raw'
         self.raw_data_files = {}
-        self.user_hot_map_data = {}
         self.__setup__()
 
     def gen_hot_map_data(self, user_id):
@@ -24,7 +25,12 @@ class HotMap:
                         gps_info = {}
                         gps_info["lng"], gps_info["lat"], gps_info["count"] = datas[1], datas[0], 1
                         dps_datas.append(gps_info)
-        self.user_hot_map_data[user_id] = dps_datas
+            json_path = str(user_id) + ".json"
+        print len(dps_datas)
+        with open(os.path.join("../data/hot_map_data", json_path), 'w') as outfile:
+            json_file = {}
+            json_file["gps"] = dps_datas
+            json.dump(json_file, outfile)
 
     def dump_hot_map_data(self, user_id):
         pass
@@ -43,8 +49,7 @@ class HotMap:
                 self.raw_data_files[int(names[3])] = \
                     list([os.path.join(dirname, filename) for filename in filenames])
 
-
 if __name__ == "__main__":
     hot_map = HotMap()
     hot_map.gen_hot_map_data(1)
-    print hot_map.user_hot_map_data[1]
+
