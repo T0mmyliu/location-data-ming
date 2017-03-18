@@ -78,7 +78,7 @@ class Cluster:
 
 if __name__ == '__main__':
     c = Cluster()
-    cluster, ignore_nodes = c.single_cluster(1, 0.001, 10)
+    cluster, ignore_nodes = c.single_cluster(1, 0.001, 0)
     points = c.cal_mean(cluster)
     print points
     c.plot(clusters=cluster, ignore_nodes=ignore_nodes)

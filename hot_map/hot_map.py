@@ -7,18 +7,12 @@ class HotMap:
         self.raw_data_files = {}
         self.__setup__()
 
-
-
-
-
-
     def get_hot_map_data_from_raw(self, user_id):
         pass
 
     def get_raw_data_files_by_id(self, user_id):
         if user_id in self.raw_data_files:
             return self.raw_data_files[user_id]
-
 
     def __setup__(self):
         self.__get_all_user_files()

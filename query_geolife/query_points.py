@@ -1,7 +1,9 @@
+# -*- coding: utf-8 -*-
+
 import sys
 sys.path.append("..")
 from sql_base import dbutils
-from convert_coordinate import convert_coordinate
+from hot_map import convert_coordinate
 from base import base_op
 from base import stay_point
 import logging.config

@@ -1,11 +1,6 @@
-
 import time
-import logging
 
-
-LOG_HANDLE = None
-
-class stay_point:
+class StayPoint:
     def __init__(self):
         self.userid= -1
         self.arrival_point = -1
@@ -15,6 +10,7 @@ class stay_point:
         self.mean_coordinate_latitude = None
         self.mean_coordinate_longtitude = None
         self.mean_coordinate_altitude = None
+
     def printSelf(self):
         print "userid = %d" %self.userid
         print "arrival_point = %d" %self.arrival_point
