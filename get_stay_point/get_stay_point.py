@@ -46,7 +46,7 @@ def calc_mean_pos(s_point,tmp_points):
     s_point.leaving_point = tmp_points[i-1].id
     return s_point
 
-def get_stay_points(user_id, max_distence=200, max_time=30*60):
+def get_stay_points(user_id, max_distence=200, max_time=20*60):
     gps_obj_list = dbutils.get_gps_record_time_order(user_id, 0, -1)
     stay_point_list = []
     gps_size = len(gps_obj_list)
@@ -98,7 +98,6 @@ def compute_mean_coord(gps_points):
         lon += point.gps_latitude
         lat += point.gps_longitude
     return (lon/len(gps_points), lat/len(gps_points))
-
 
 def get_stay_points_list(user_id, mode=0, buffer_file_name="buffer"):
     if mode == 1:
@@ -176,7 +175,7 @@ def main():
     print "successfully!"
 
 def get_stay_point(user_id):
-    dir_name = "../data/stay_point"
+    dir_name = "../data/stay_point_v1"
     csv_name = dir_name+ "/staypoints_%s.csv" %user_id
     stay_points_list = get_stay_points_list(user_id)
     saveStayPointsToCsv(csv_name, stay_points_list)

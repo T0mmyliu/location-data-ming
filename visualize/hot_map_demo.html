@@ -31,13 +31,6 @@
 
     var points = [];
 
-    $.getJSON("../data/hot_map_data/1.json",function(result){
-        points = result.gps;
-        heatmapOverlay = new BMapLib.HeatmapOverlay({"radius":20});
-        map.addOverlay(heatmapOverlay);
-        heatmapOverlay.setDataSet({data:points,max:100});
-    });
-
     if(!isSupportCanvas()){
     	alert('热力图目前只支持有canvas支持的浏览器,您所使用的浏览器不能使用热力图功能~')
     }
@@ -86,4 +79,65 @@
         var elem = document.createElement('canvas');
         return !!(elem.getContext && elem.getContext('2d'));
     }
+
+    function addMarker(point){
+	  var marker = new BMap.Marker(point);
+	  map.addOverlay(marker);
+	}
+
+    function addMarkerJump(point){
+	  var myIcon = new BMap.Icon("http://developer.baidu.com/map/jsdemo/img/fox.gif", new BMap.Size(300,157));
+	  var marker2 = new BMap.Marker(point,{icon:myIcon});  // 创建标注
+         map.addOverlay(marker2);              // 将标注添加到地图中
+
+	}
+
+    $.getJSON("../data/baidu_gps/1000.json",function(result){
+        points = result.gps;
+        heatmapOverlay = new BMapLib.HeatmapOverlay({"radius":20});
+        map.addOverlay(heatmapOverlay);
+        heatmapOverlay.setDataSet({data:points,max:100});
+    });
+
+    $.getJSON("../data/cluster_point_baidu/10000.json",function(result){
+        points = result.gps;
+        for (var i=0;i<points.length;i++)
+        {
+            var point = new BMap.Point(points[i]["lng"], points[i]["lat"]);
+		    addMarkerJump(point);
+        }
+    });
+
+    $.getJSON("../data/stay_point_baidu_gps/1000.json",function(result){
+        points = result.gps;
+        for (var i=0;i<points.length;i++)
+        {
+            var point = new BMap.Point(points[i]["lng"], points[i]["lat"]);
+		    addMarker(point);
+        }
+    });
+
+    color = ["red","blue","green","yellow","black"];
+    $.getJSON("../data/move_tracks/001/20081025231428.json",function(result){
+        tracks = result.track;
+        for(var track_id = 0; track_id<tracks.length; track_id++) {
+            points = tracks[track_id];
+            var firstPoint;
+            var endPoint;
+            var newChartData = [];
+
+            for (var i = 0; i < points.length; i++) {
+                var point = new BMap.Point(points[i]["lng"], points[i]["lat"]);
+                newChartData.push(point);
+            }
+            firstPoint = newChartData[0];
+            endPoint = newChartData[newChartData.length - 1];
+            var polyline = new BMap.Polyline(newChartData, {strokeColor: color[track_id%color.length], strokeWeight: 6, strokeOpacity: 0.5});
+            map.addOverlay(polyline);
+        }
+    });
+
+
+
 </script>
+
